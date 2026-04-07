@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>帳合</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500&family=Ma+Shan+Zheng&display=swap">
+<script src="https://accounts.google.com/gsi/client" onload="gisReady()" async defer></script>
+<style>
+@font-face{font-family:'HuiWen';src:url('https://cdn.jsdelivr.net/gh/bosswnx/huiwenmincho-improved@main/%E5%8C%AF%E6%96%87%E6%98%8E%E6%9C%9D%E9%AB%94.ttf') format('truetype');font-display:swap;}
+@font-face{font-family:'ChenYu';src:url('https://cdn.jsdelivr.net/gh/Chenyu-otf/chenyuluoyan_thin@main/ChenYuluoyan-Thin.ttf') format('truetype');font-display:swap;}
+:root{
+  --bg:#15192e;--w:#f0ede8;
+  --dim:rgba(240,237,232,.46);
+  --ghost:rgba(240,237,232,.09);
+  --card:rgba(10,13,30,.60);
+  --hw:'HuiWen','Noto Serif TC',serif;
+  --cy:'ChenYu','Ma Shan Zheng',cursive;
+  --T:.62s cubic-bezier(.77,0,.175,1);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--w);font-family:var(--hw);-webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased;}
+
+/* BG TEXT */
+#bg{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0;display:flex;flex-direction:column;justify-content:space-around;padding:6px 0;}
+.bl{white-space:nowrap;font-family:var(--cy);line-height:2;color:var(--w);opacity:.10;will-change:transform;flex-shrink:0;}
+@keyframes ltr{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@keyframes rtl{from{transform:translateX(-50%)}to{transform:translateX(0)}}
+
+/* PAGES */
+#app{position:fixed;inset:0;z-index:1;overflow:hidden;}
+.pg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+
+/* ORBITAL ARCS SVG — per page */
+.orb{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;overflow:visible;}
+.orb circle,.orb ellipse{fill:none;stroke:rgba(240,237,232,.11);stroke-width:.65;}
+
+/* PLANET BALLS — global fixed, animated */
+.pball{
+  position:fixed;border-radius:50%;
+  background:rgba(240,237,232,.92);
+  box-shadow:0 0 12px rgba(240,237,232,.20),0 0 3px rgba(240,237,232,.5);
+  width:17px;height:17px;
+  transform:translate(-50%,-50%);
+  pointer-events:none;z-index:9;
+  transition:top var(--T),left var(--T),opacity 1.1s ease;
+}
+
+/* CARD */
+.card{background:var(--card);border-radius:18px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding:26px 22px;width:min(88vw,380px);position:relative;z-index:2;}
+
+/* ── P1 ── */
+.logo{font-family:var(--hw);font-size:clamp(58px,15vw,88px);letter-spacing:.32em;margin-bottom:22px;text-align:center;position:relative;z-index:2;}
+.ldiv{width:46vw;max-width:234px;height:1px;background:var(--dim);margin-bottom:40px;position:relative;z-index:2;}
+.gbtn{font-family:var(--cy);font-size:11px;letter-spacing:.24em;color:var(--dim);background:none;border:none;cursor:pointer;padding:12px 24px;position:relative;z-index:2;transition:color .25s;}
+.gbtn::after{content:'';position:absolute;bottom:8px;left:24px;right:24px;height:1px;background:var(--ghost);}
+.gbtn:hover{color:var(--w);}
+
+/* ── P2 ── */
+.p2lb{font-family:var(--hw);font-size:13.5px;letter-spacing:.13em;color:var(--dim);margin-bottom:10px;cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:center;gap:6px;}
+.p2lb:active{opacity:.6;}
+.p2rec{font-family:var(--cy);font-size:9px;opacity:.5;letter-spacing:.05em;}
+.p2n{font-family:var(--hw);font-size:clamp(46px,12vw,72px);letter-spacing:-.02em;display:flex;align-items:baseline;gap:3px;justify-content:center;}
+.p2s{font-size:.5em;opacity:.5;}
+.p2dv{width:60%;height:1px;background:var(--dim);margin:20px auto;}
+.p2rw{display:flex;align-items:flex-start;width:100%;}
+/* 2:1 column ratio */
+.p2col-av{flex:2;padding-left:2px;}
+.p2col-lk{flex:1;border-left:1px solid var(--ghost);padding-left:14px;}
+/* All labels use HuiWen */
+.plbl{font-family:var(--hw);font-size:10px;letter-spacing:.05em;color:var(--dim);margin-bottom:6px;}
+.cvl-lg{font-family:var(--hw);font-size:clamp(20px,5.5vw,30px);}
+.cvl-sm{font-family:var(--hw);font-size:clamp(14px,3.5vw,19px);color:var(--dim);}
+.hint{position:absolute;bottom:44px;font-family:var(--cy);font-size:18px;color:var(--dim);}
+.dn{animation:hdn 2.6s ease-in-out infinite;}
+.up{animation:hup 2.6s ease-in-out infinite;}
+@keyframes hdn{0%,100%{transform:translateY(0)}55%{transform:translateY(7px)}}
+@keyframes hup{0%,100%{transform:translateY(0)}55%{transform:translateY(-7px)}}
+
+/* ── P3 ── */
+.p3h{font-family:var(--hw);font-size:clamp(24px,6.5vw,36px);letter-spacing:.22em;text-align:center;margin-bottom:14px;}
+.p3dv{width:100%;height:1px;background:var(--dim);margin-bottom:18px;}
+.p3g{display:flex;gap:14px;width:100%;}
+.p3c{flex:1;min-width:0;}
+.p3ch{font-family:var(--hw);font-size:10px;letter-spacing:.05em;color:var(--dim);margin-bottom:12px;}
+.p3it{margin-bottom:13px;cursor:pointer;}
+.p3nm{font-family:var(--hw);font-size:13.5px;color:var(--w);display:flex;align-items:center;gap:6px;margin-bottom:3px;transition:opacity .2s;}
+.p3nm:hover{opacity:.55;}
+.p3nm::before{content:'·';font-size:14px;color:var(--dim);flex-shrink:0;}
+.p3am{font-family:var(--hw);font-size:13px;color:var(--dim);padding-left:11px;}
+
+/* ── P4 ── */
+#p4{display:none;transform:translateX(100vw);z-index:10;background:var(--bg);}
+
+/* P4 header: account left, planet-button right */
+.p4hd{position:absolute;top:0;left:0;right:0;height:96px;padding:42px 5% 0;display:flex;flex-direction:column;}
+.p4accname{font-family:var(--hw);font-size:17px;color:var(--w);letter-spacing:.04em;margin-bottom:4px;}
+.p4add{font-family:var(--cy);font-size:11px;letter-spacing:.07em;color:var(--dim);cursor:pointer;transition:color .2s;}
+.p4add:hover{color:var(--w);}
+.p4hdln{position:absolute;bottom:0;left:5%;width:46%;height:1px;background:var(--ghost);}
+
+/* Planet back button — top RIGHT, circular */
+.p4bkp{
+  position:absolute;top:34px;right:5%;
+  width:40px;height:40px;border-radius:50%;
+  border:1.5px solid rgba(240,237,232,.58);
+  background:rgba(240,237,232,.05);
+  color:var(--w);font-family:var(--cy);font-size:16px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:background .2s;z-index:5;
+}
+.p4bkp:hover{background:rgba(240,237,232,.13);}
+
+/* P4 body: left (orbit+date+amount) | right (category) */
+.p4body{position:absolute;top:96px;left:0;right:0;bottom:0;display:flex;}
+.p4left{flex:1;min-width:0;display:flex;flex-direction:column;padding:2% 0 4% 4%;}
+.p4q2{flex:1;min-height:0;display:flex;align-items:flex-start;padding-top:2%;}
+#oc{cursor:grab;touch-action:none;flex-shrink:0;}
+#oc:active{cursor:grabbing;}
+
+/* Date text (HuiWen, large, below orbit) */
+.p4date{flex:0 0 auto;padding:6px 0 4px;}
+.p4date-r1{display:flex;align-items:baseline;gap:5px;margin-bottom:1px;}
+.p4mo{font-family:var(--hw);font-size:clamp(17px,4.5vw,24px);letter-spacing:.06em;color:rgba(240,237,232,.68);}
+.p4yr{font-family:var(--cy);font-size:clamp(11px,2.8vw,15px);color:rgba(240,237,232,.4);letter-spacing:.05em;}
+.p4dy{font-family:var(--hw);font-size:clamp(40px,11vw,62px);letter-spacing:-.02em;color:var(--w);line-height:1.05;}
+
+/* Amount + save */
+.p4q3{flex:0 0 auto;}
+.curr{display:flex;gap:4px;margin-bottom:7px;flex-wrap:nowrap;overflow-x:auto;}
+.crb{font-family:var(--hw);font-size:9.5px;letter-spacing:.03em;padding:4px 6px;border:1px solid var(--ghost);border-radius:2px;background:transparent;color:var(--dim);cursor:pointer;transition:all .14s;white-space:nowrap;flex-shrink:0;}
+.crb.on{border-color:rgba(240,237,232,.42);color:var(--w);background:rgba(240,237,232,.09);}
+.p4amtrow{display:flex;align-items:flex-end;gap:12px;margin-bottom:4px;}
+.p4vl{font-family:var(--hw);font-size:clamp(26px,8vw,46px);color:var(--w);border-bottom:1px solid var(--ghost);padding-bottom:5px;cursor:pointer;transition:border-color .2s;min-width:80px;}
+.p4vl:hover{border-color:var(--dim);}
+.p4save{font-family:var(--cy);font-size:10px;letter-spacing:.18em;padding:7px 13px;border:1px solid rgba(240,237,232,.36);border-radius:2px;background:rgba(240,237,232,.07);color:var(--w);cursor:pointer;transition:background .15s;white-space:nowrap;flex-shrink:0;margin-bottom:5px;}
+.p4save:hover{background:rgba(240,237,232,.17);}
+.cvln{font-family:var(--hw);font-size:10px;color:rgba(240,237,232,.27);min-height:14px;}
+#rst{position:absolute;top:34px;left:50%;transform:translateX(-50%);font-family:var(--cy);font-size:9px;color:rgba(240,237,232,.2);}
+
+/* Category (right) */
+.p4right{flex:0 0 50%;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;}
+.cwa{background:none;border:none;color:var(--dim);font-family:var(--hw);font-size:20px;cursor:pointer;padding:10px 16px;transition:color .2s;flex-shrink:0;}
+.cwa:hover{color:var(--w);}
+.cwr{border-radius:50%;border:2.5px solid rgba(240,237,232,.78);position:relative;flex-shrink:0;}
+.cwc{position:absolute;border-radius:50%;background:#060818;display:flex;align-items:center;justify-content:center;top:50%;left:50%;transform:translate(-50%,-50%);}
+.cwch{font-family:var(--hw);color:var(--w);line-height:1;transition:opacity .13s;}
+
+/* CALCULATOR */
+#calc{position:fixed;bottom:0;left:0;right:0;z-index:50;background:rgba(10,13,36,.94);backdrop-filter:blur(16px);border-top:1px solid var(--ghost);padding:12px 12px 28px;transform:translateY(110%);transition:transform .4s cubic-bezier(.77,0,.175,1);}
+#calc.open{transform:translateY(0);}
+.cex{font-family:var(--hw);font-size:22px;color:var(--w);text-align:right;padding:5px 8px 10px;min-height:42px;word-break:break-all;border-bottom:1px solid var(--ghost);margin-bottom:10px;}
+.csn{display:flex;gap:6px;margin-bottom:8px;}
+.cs{flex:1;padding:8px;border:1px solid var(--ghost);border-radius:2px;background:transparent;color:var(--dim);font-family:var(--hw);font-size:13px;cursor:pointer;transition:background .14s,color .14s;}
+.cs.on{background:rgba(240,237,232,.15);color:var(--w);}
+.cg{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+.cb{padding:12px 4px;text-align:center;border:1px solid var(--ghost);border-radius:2px;background:rgba(18,22,50,.88);color:var(--w);font-family:var(--hw);font-size:16px;cursor:pointer;transition:background .11s;}
+.cb:active{background:rgba(240,237,232,.2);}
+.cb.op{background:rgba(240,237,232,.05);color:var(--dim);}
+.cb.w2{grid-column:span 2;}
+.cb.ok{background:rgba(240,237,232,.13);}
+
+/* HISTORY */
+#hist{position:fixed;inset:0;z-index:60;background:rgba(7,9,24,.96);backdrop-filter:blur(12px);transform:translateY(100vh);transition:transform .45s cubic-bezier(.77,0,.175,1);display:flex;flex-direction:column;}
+#hist.open{transform:translateY(0);}
+.hhd{padding:52px 6% 16px;display:flex;align-items:center;border-bottom:1px solid var(--ghost);}
+.hhdttl{font-family:var(--hw);font-size:16px;letter-spacing:.12em;}
+.hhdcls{margin-left:auto;background:none;border:none;color:var(--dim);font-family:var(--cy);font-size:19px;cursor:pointer;padding:4px 8px;transition:color .2s;}
+.hhdcls:hover{color:var(--w);}
+.hbody{flex:1;overflow-y:auto;padding:12px 6% 30px;-webkit-overflow-scrolling:touch;}
+.hit{display:flex;justify-content:space-between;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--ghost);}
+.hil .hid{font-family:var(--cy);font-size:9.5px;color:var(--dim);margin-bottom:3px;}
+.hil .hic{font-family:var(--hw);font-size:13px;}
+.hir{text-align:right;}
+.hir .hia{font-family:var(--hw);font-size:16px;}
+.hir .hicu{font-family:var(--cy);font-size:9.5px;color:var(--dim);margin-top:2px;}
+.hp{color:rgba(160,215,160,.9);}.hn{color:rgba(220,148,148,.9);}
+.hemp{text-align:center;font-family:var(--cy);font-size:12px;color:var(--dim);padding:60px 0;letter-spacing:.1em;}
+/* note field */
+.p4note{font-family:var(--hw);font-size:11px;color:var(--dim);background:none;border:none;border-bottom:1px solid var(--ghost);outline:none;width:100%;padding:3px 0 4px;margin-top:5px;transition:border-color .2s;letter-spacing:.03em;}
+.p4note::placeholder{color:rgba(240,237,232,.22);}
+.p4note:focus{border-color:var(--dim);}
+/* delete button in history */
+.hdel{background:none;border:none;color:rgba(220,148,148,.4);font-family:var(--cy);font-size:14px;cursor:pointer;padding:4px 6px;transition:color .2s;flex-shrink:0;}
+.hdel:hover{color:rgba(220,148,148,.9);}
+/* P1 local hint */
+.p1local{font-family:var(--cy);font-size:9px;letter-spacing:.12em;color:rgba(240,237,232,.22);position:absolute;bottom:44px;text-align:center;animation:hdn 2.6s ease-in-out infinite;}
+/* sync status dot */
+.syncdot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--dim);margin-left:6px;vertical-align:middle;transition:background .5s;}
+.syncdot.drive{background:rgba(140,210,140,.85);}
+.syncdot.syncing{background:rgba(200,180,100,.8);animation:pulse .9s ease-in-out infinite;}
+.syncdot.err{background:rgba(210,120,120,.8);}
+@keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+</style>
+</head>
+<body>
+<div id="bg"></div>
+
+<!-- GLOBAL PLANET BALLS -->
+<div class="pball" id="pa" style="left:8%;top:18%;opacity:0"></div>
+<div class="pball" id="pb" style="left:84%;top:78%;opacity:0"></div>
+
+<div id="app">
+
+<!-- P1 LOGIN -->
+<div class="pg" id="p1">
+  <svg class="orb" viewBox="0 0 100 200" preserveAspectRatio="xMidYMid meet">
+    <circle cx="110" cy="-55" r="118"/>
+    <circle cx="-10" cy="255" r="118"/>
+  </svg>
+  <div class="logo">帳　合</div>
+  <div class="ldiv"></div>
+  <button class="gbtn" id="gbtn">CONTINUE WITH GOOGLE</button>
+  <div class="p1local">∨ 向下滑動以本機儲存</div>
+</div>
+
+<!-- P2 NET WORTH -->
+<div class="pg" id="p2" style="display:none;transform:translateY(100vh)">
+  <svg class="orb" viewBox="0 0 100 200" preserveAspectRatio="xMidYMid meet">
+    <circle cx="145" cy="-55" r="145"/>
+  </svg>
+  <div class="card">
+    <div class="p2lb" onclick="openHist()">淨資產 <span class="p2rec">▸ 記錄</span><span class="syncdot" id="syncdot" title="本機儲存"></span></div>
+    <div class="p2n"><span class="p2s">$</span><span id="nw">0</span></div>
+    <div class="p2dv"></div>
+    <div class="p2rw">
+      <div class="p2col-av">
+        <div class="plbl">利用可能</div>
+        <div class="cvl-lg">$<span id="av">0</span></div>
+      </div>
+      <div class="p2col-lk">
+        <div class="plbl">できません</div>
+        <div class="cvl-sm">$<span id="lk">0</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="hint dn">∨</div>
+</div>
+
+<!-- P3 ASSETS -->
+<div class="pg" id="p3" style="display:none;transform:translateY(100vh)">
+  <svg class="orb" viewBox="0 0 100 200" preserveAspectRatio="xMidYMid meet">
+    <circle cx="-45" cy="255" r="145"/>
+  </svg>
+  <div class="hint up" style="top:42px;bottom:auto">∧</div>
+  <div class="card">
+    <div class="p3h">資　產</div>
+    <div class="p3dv"></div>
+    <div class="p3g" id="p3g"></div>
+  </div>
+</div>
+
+<!-- P4 TRANSACTION -->
+<div class="pg" id="p4">
+  <div class="p4hd">
+    <div class="p4accname" id="p4accname">帳戶</div>
+    <div class="p4add">新增項目</div>
+    <div class="p4hdln"></div>
+  </div>
+  <!-- Planet ← at top-right -->
+  <button class="p4bkp" onclick="closeP4()">←</button>
+  <div class="p4body">
+    <div class="p4left">
+      <div class="p4q2"><canvas id="oc"></canvas></div>
+      <!-- Date text (HuiWen, large) -->
+      <div class="p4date">
+        <div class="p4date-r1">
+          <span class="p4mo" id="p4mo">APR</span>
+          <span class="p4yr" id="p4yr">'26</span>
+        </div>
+        <div class="p4dy" id="p4dy">07</div>
+      </div>
+      <div class="p4q3">
+        <div class="curr">
+          <button class="crb on" onclick="setCur('TWD')">TWD</button>
+          <button class="crb"    onclick="setCur('USD')">USD</button>
+          <button class="crb"    onclick="setCur('JPY')">JPY</button>
+          <button class="crb"    onclick="setCur('HKD')">HKD</button>
+          <button class="crb"    onclick="setCur('CNY')">CNY</button>
+        </div>
+        <div class="p4amtrow">
+          <div class="p4vl" id="pval" onclick="openCalc()">0</div>
+          <button class="p4save" onclick="saveEntry()">SAVE</button>
+        </div>
+        <div class="cvln" id="cvln"></div>
+        <input class="p4note" id="p4note" type="text" placeholder="備註（選填）" maxlength="40"/>
+      </div>
+    </div>
+    <div class="p4right" id="p4right">
+      <button class="cwa" onclick="catMv(-1)">∧</button>
+      <div class="cwr" id="cwr"><div class="cwc" id="cwc"><span class="cwch" id="cwch">食</span></div></div>
+      <button class="cwa" onclick="catMv(1)">∨</button>
+    </div>
+  </div>
+  <span id="rst"></span>
+</div>
+
+</div><!-- /app -->
+
+<!-- CALCULATOR -->
+<div id="calc">
+  <div class="cex" id="cex">0</div>
+  <div class="csn">
+    <button class="cs on" id="spos" onclick="setSgn(1)">＋ 收入</button>
+    <button class="cs"    id="sneg" onclick="setSgn(-1)">－ 支出</button>
+  </div>
+  <div class="cg">
+    <button class="cb op" onclick="ci('C')">C</button>
+    <button class="cb op" onclick="ci('pm')">±</button>
+    <button class="cb op" onclick="ci('pct')">%</button>
+    <button class="cb op" onclick="ci('/')">÷</button>
+    <button class="cb" onclick="ci('7')">7</button><button class="cb" onclick="ci('8')">8</button><button class="cb" onclick="ci('9')">9</button>
+    <button class="cb op" onclick="ci('*')">×</button>
+    <button class="cb" onclick="ci('4')">4</button><button class="cb" onclick="ci('5')">5</button><button class="cb" onclick="ci('6')">6</button>
+    <button class="cb op" onclick="ci('-')">−</button>
+    <button class="cb" onclick="ci('1')">1</button><button class="cb" onclick="ci('2')">2</button><button class="cb" onclick="ci('3')">3</button>
+    <button class="cb op" onclick="ci('+')">+</button>
+    <button class="cb w2" onclick="ci('0')">0</button>
+    <button class="cb"    onclick="ci('.')">.</button>
+    <button class="cb w2 ok" onclick="cc()">確認</button>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div id="hist">
+  <div class="hhd"><div class="hhdttl">往來記錄</div><button class="hhdcls" onclick="closeHist()">✕</button></div>
+  <div class="hbody" id="hbody"></div>
+</div>
+
+<script>
+/* ── BG ── */
+const BG='Bookkeeping is the recording of financial transactions, and is part of the process of accounting in business and other organizations. It involves preparing source documents for all transactions, operations, and other events of a business. Transactions include purchases, sales, receipts and payments by an individual person, organization or corporation. There are several standard methods of bookkeeping, including the single-entry and double-entry bookkeeping systems. @zhiyi1571 & Claude. The bookkeeper brings the books to the trial balance stage, from which an accountant may prepare financial reports for the organisation, such as the income statement and the balance sheet. Thereafter, an accountant can create financial reports from the information in the bookkeeper ledger. Petty cash book, suppliers ledger, customer ledger, and general ledger are all key components of the direct daybook recording system. ';
+const bgEl=document.getElementById('bg');
+for(let i=0;i<13;i++){
+  const d=document.createElement('div');d.className='bl';
+  // Rotate BG string by a different offset each line so no two lines start at the same word
+  const offset=Math.floor((BG.length/13)*i);
+  const rotated=BG.slice(offset)+BG.slice(0,offset);
+  const t=rotated.repeat(4);
+  d.textContent=t+t;
+  const dur=90+i*14, delay=-(i*17);
+  d.style.animation=`${i%2===0?'ltr':'rtl'} ${dur}s ${delay}s linear infinite`;
+  d.style.fontSize=(12+i%4*1.5)+'px';
+  bgEl.appendChild(d);
+}
+
+/* ── BALANCE ENGINE ── */
+const DEFAULT_ACCOUNTS=[
+  {name:'可用金額',amount:0,type:'av'},
+  {name:'信用卡（金融卡）',amount:0,type:'av'},
+  {name:'持有現金',amount:0,type:'av'},
+  {name:'借出款項',amount:0,type:'av'},
+  {name:'定存保險',amount:0,type:'lk'},
+  {name:'證券投資',amount:0,type:'lk'},
+  {name:'實體資產',amount:0,type:'lk'},
+  {name:'其他',amount:0,type:'lk'},
+];
+let accounts=[],txHist=[];
+function initData(){
+  const sa=localStorage.getItem('zh_accounts'),sh=localStorage.getItem('zh_hist');
+  accounts=sa?JSON.parse(sa):DEFAULT_ACCOUNTS.map(a=>({...a}));
+  txHist=sh?JSON.parse(sh):[];
+}
+function saveData(){
+  localStorage.setItem('zh_accounts',JSON.stringify(accounts));
+  localStorage.setItem('zh_hist',JSON.stringify(txHist));
+}
+function applyTransaction({accName,cat,date,amt,amtOrig,cur,note}){
+  txHist.push({id:Date.now(),date,cat,acc:accName,amt,amtOrig,cur,note:note||''});
+  const acc=accounts.find(a=>a.name===accName);
+  if(acc)acc.amount=Math.round((acc.amount+amt)*100)/100;
+  saveData();rP2();
+  if(document.getElementById('p3').style.display!=='none')rP3();
+}
+const FMT=n=>(n<0?'−':'')+'$\u202f'+Math.abs(n).toLocaleString('zh-TW');
+const net=()=>accounts.filter(a=>a.type==='av').reduce((s,a)=>s+a.amount,0);
+const sumT=t=>accounts.filter(a=>a.type===t).reduce((s,a)=>s+a.amount,0);
+initData();
+
+/* ── PLANET SYSTEM ── */
+const PPOS={
+  1:{a:{left:'8%', top:'18%',opacity:'1'},b:{left:'84%',top:'78%',opacity:'1'}},
+  2:{a:{left:'78%',top:'8%', opacity:'1'},b:{left:'50%',top:'100%',opacity:'0'}},
+  3:{a:{left:'82%',top:'86%',opacity:'1'},b:{left:'50%',top:'0%',  opacity:'0'}},
+};
+function movePlanets(n){
+  const pa=document.getElementById('pa'),pb=document.getElementById('pb');
+  if(!pa||!pb||!PPOS[n])return;
+  Object.assign(pa.style,PPOS[n].a);
+  Object.assign(pb.style,PPOS[n].b);
+}
+movePlanets(1);
+
+/* ── PAGE NAV ── */
+let cur=1,busy=false;
+function goto(n){
+  if(busy||n===cur||n<1||n>3)return;
+  busy=true;
+  const f=document.getElementById('p'+cur),t=document.getElementById('p'+n);
+  const dir=n>cur?1:-1;
+  t.style.transition='none';t.style.transform=`translateY(${dir*100}vh)`;t.style.display='flex';
+  t.getBoundingClientRect();
+  t.style.transition='transform .62s cubic-bezier(.77,0,.175,1)';
+  f.style.transition='transform .62s cubic-bezier(.77,0,.175,1)';
+  t.style.transform='translateY(0)';f.style.transform=`translateY(${-dir*100}vh)`;
+  setTimeout(()=>{
+    f.style.display='none';cur=n;busy=false;
+    movePlanets(n);
+    if(n===2)rP2();if(n===3)rP3();
+  },640);
+}
+document.getElementById('gbtn').onclick=()=>goto(2);
+
+let ty0=null;
+document.addEventListener('touchstart',e=>{
+  if(e.target.closest('#oc,.p4right,#calc,#hist,.p4q3,.p4date,.p4note'))return;
+  ty0=e.touches[0].clientY;
+},{passive:true});
+document.addEventListener('touchend',e=>{
+  if(ty0===null)return;
+  const dy=ty0-e.changedTouches[0].clientY;
+  if(Math.abs(dy)>55){
+    // On P1, swipe DOWN (dy < 0) = local mode → go to P2
+    if(cur===1&&dy<-55){goto(2);ty0=null;return;}
+    dy>0?goto(cur+1):goto(cur-1);
+  }
+  ty0=null;
+},{passive:true});
+let wt=0;
+document.addEventListener('wheel',e=>{const n=Date.now();if(n-wt<600)return;wt=n;e.deltaY>20?goto(cur+1):e.deltaY<-20?goto(cur-1):null;},{passive:true});
+
+function openP4(name){
+  document.getElementById('p4accname').textContent=name;
+  // Reset orbit to today every time P4 opens
+  orbitYear=today.getFullYear();
+  prevDoy=doy(today);
+  oAng=d2a(today);
+  // Hide planets during P4
+  const pa=document.getElementById('pa'),pb=document.getElementById('pb');
+  pa.style.opacity='0';pb.style.opacity='0';
+  const el=document.getElementById('p4');
+  el.style.display='flex';el.style.transition='none';el.style.transform='translateX(100vw)';
+  el.getBoundingClientRect();
+  el.style.transition='transform .5s cubic-bezier(.77,0,.175,1)';el.style.transform='translateX(0)';
+  requestAnimationFrame(()=>requestAnimationFrame(sizeP4));
+}
+function closeP4(){
+  const el=document.getElementById('p4');
+  if(calcOpen)closeCalc();
+  movePlanets(cur); // restore
+  el.style.transform='translateX(100vw)';
+  setTimeout(()=>el.style.display='none',520);
+}
+let p4x=null;
+document.getElementById('p4').addEventListener('touchstart',e=>{if(e.target.closest('#oc,.p4right,#calc,.p4q3,.p4date'))return;p4x=e.touches[0].clientX;},{passive:true});
+document.getElementById('p4').addEventListener('touchend',e=>{if(p4x!==null&&e.changedTouches[0].clientX-p4x>65)closeP4();p4x=null;},{passive:true});
+
+/* ── RENDER ── */
+function rP2(){
+  document.getElementById('nw').textContent=Math.abs(net()).toLocaleString('zh-TW');
+  document.getElementById('av').textContent=Math.abs(sumT('av')).toLocaleString('zh-TW');
+  document.getElementById('lk').textContent=Math.abs(sumT('lk')).toLocaleString('zh-TW');
+}
+function rP3(){
+  const av=accounts.filter(a=>a.type==='av'),lk=accounts.filter(a=>a.type==='lk');
+  document.getElementById('p3g').innerHTML=`
+    <div class="p3c"><div class="p3ch">利用可能</div>${av.map(a=>`<div class="p3it" onclick="openP4('${a.name}')"><div class="p3nm">${a.name}</div><div class="p3am">${FMT(a.amount)}</div></div>`).join('')}</div>
+    <div class="p3c"><div class="p3ch">できません</div>${lk.map(a=>`<div class="p3it" onclick="openP4('${a.name}')"><div class="p3nm">${a.name}</div><div class="p3am">${FMT(a.amount)}</div></div>`).join('')}</div>`;
+}
+
+/* ── HISTORY ── */
+function delEntry(id){
+  const idx=txHist.findIndex(h=>h.id===id);
+  if(idx===-1)return;
+  const h=txHist[idx];
+  // reverse the balance
+  const acc=accounts.find(a=>a.name===h.acc);
+  if(acc)acc.amount=Math.round((acc.amount-h.amt)*100)/100;
+  txHist.splice(idx,1);
+  saveData();rP2();
+  if(document.getElementById('p3').style.display!=='none')rP3();
+  openHist(); // re-render
+}
+function openHist(){
+  document.getElementById('hbody').innerHTML=txHist.length===0?'<div class="hemp">尚無記錄</div>':[...txHist].reverse().map(h=>{
+    const origLine=(h.cur&&h.cur!=='TWD'&&h.amtOrig!=null)?`<div class="hicu">${h.cur} ${(h.amtOrig<0?'−':'')+Math.abs(h.amtOrig).toLocaleString('zh-TW')}</div>`:`<div class="hicu">TWD</div>`;
+    const noteEl=h.note?`<div class="hid" style="margin-top:2px;opacity:.65">${h.note}</div>`:'';
+    return`<div class="hit">
+      <div class="hil"><div class="hid">${h.date}</div><div class="hic">${h.cat}・${h.acc}</div>${noteEl}</div>
+      <div class="hir" style="display:flex;align-items:center;gap:6px;">
+        <div><div class="hia ${h.amt>=0?'hp':'hn'}">${FMT(h.amt)}</div>${origLine}</div>
+        <button class="hdel" onclick="delEntry(${h.id||0})">×</button>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('hist').classList.add('open');
+}
+function closeHist(){document.getElementById('hist').classList.remove('open');}
+
+/* ── ORBIT ── */
+const oc=document.getElementById('oc'),ox=oc.getContext('2d');
+const MO=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+let today=new Date(),oAng=0,odrag=false;
+
+(async()=>{
+  try{const r=await fetch('https://worldtimeapi.org/api/ip',{signal:AbortSignal.timeout(3500)});if(r.ok){const j=await r.json();today=new Date(j.datetime);}}catch(e){}
+  oAng=d2a(today);drawOrbit();
+})();
+
+function doy(d){return Math.floor((d-new Date(d.getFullYear(),0,0))/864e5);}
+function d2a(d){return(doy(d)/365)*Math.PI*2-Math.PI/2;}
+function a2d(a){
+  const n=((a+Math.PI/2)/(Math.PI*2)*365+365)%365;
+  return new Date(orbitYear,0,Math.round(n)||1);
+}
+
+let orbitYear=today.getFullYear();
+let prevDoy=doy(today); // track previous day-of-year to detect Jan 1 crossing
+
+function trackRotation(newAng){
+  const n=((newAng+Math.PI/2)/(Math.PI*2)*365+365)%365;
+  const curDoy=Math.round(n)||1;
+  // Crossed Jan 1 going forward: was near 365, now near 1
+  if(prevDoy>330&&curDoy<35) orbitYear++;
+  // Crossed Jan 1 going backward: was near 1, now near 365
+  if(prevDoy<35&&curDoy>330) orbitYear--;
+  prevDoy=curDoy;
+}
+
+function updDate(){
+  const d=a2d(oAng);
+  document.getElementById('p4mo').textContent=MO[d.getMonth()];
+  document.getElementById('p4yr').textContent="'"+String(d.getFullYear()).slice(2);
+  document.getElementById('p4dy').textContent=String(d.getDate()).padStart(2,'0');
+}
+
+function sizeP4(){
+  const q2=document.querySelector('.p4q2'),pr=document.getElementById('p4right');
+  if(!q2||!pr)return;
+  const q2r=q2.getBoundingClientRect();
+  const sz=Math.floor(Math.min(q2r.width*.93,q2r.height*.92,238));
+  if(sz>20){oc.width=sz;oc.height=sz;drawOrbit();}
+  const prr=pr.getBoundingClientRect();
+  const csz=Math.floor(Math.min(prr.width*.90,(prr.height-96)*.90,252));
+  if(csz>40){
+    const ring=document.getElementById('cwr'),core=document.getElementById('cwc'),ch=document.getElementById('cwch');
+    ring.style.width=csz+'px';ring.style.height=csz+'px';
+    core.style.width=csz*.72+'px';core.style.height=csz*.72+'px';
+    ch.style.fontSize=Math.round(csz*.34)+'px';
+  }
+}
+
+function drawOrbit(){
+  if(!oc.width||!oc.height)return;
+  const w=oc.width,h=oc.height,cx=w/2,cy=h/2,R=w*.38;
+  ox.clearRect(0,0,w,h);
+  // Orbit ring
+  ox.beginPath();ox.arc(cx,cy,R,0,Math.PI*2);
+  ox.strokeStyle='rgba(240,237,232,.16)';ox.lineWidth=1.3;ox.stroke();
+  // Star body: hollow ring design
+  const bx=cx+R*Math.cos(oAng),by=cy+R*Math.sin(oAng);
+  const bR=w*.064,bIn=w*.023;
+  const g=ox.createRadialGradient(bx,by,0,bx,by,bR*1.8);
+  g.addColorStop(0,'rgba(240,237,232,.16)');g.addColorStop(1,'rgba(240,237,232,0)');
+  ox.beginPath();ox.arc(bx,by,bR*1.8,0,Math.PI*2);ox.fillStyle=g;ox.fill();
+  ox.beginPath();ox.arc(bx,by,bR,0,Math.PI*2);
+  ox.strokeStyle='rgba(240,237,232,.85)';ox.lineWidth=2;ox.stroke();
+  ox.beginPath();ox.arc(bx,by,bIn,0,Math.PI*2);
+  ox.fillStyle='rgba(240,237,232,.68)';ox.fill();
+  // Center planet
+  ox.beginPath();ox.arc(cx,cy,w*.022,0,Math.PI*2);
+  ox.fillStyle='rgba(240,237,232,.14)';ox.fill();
+  updDate();
+}
+
+function oXY(e){
+  const r=oc.getBoundingClientRect();
+  return Math.atan2((e.touches?e.touches[0].clientY:e.clientY)-r.top-oc.height/2,(e.touches?e.touches[0].clientX:e.clientX)-r.left-oc.width/2);
+}
+oc.addEventListener('mousedown',e=>{odrag=true;oAng=oXY(e);drawOrbit();});
+oc.addEventListener('touchstart',e=>{odrag=true;oAng=oXY(e);drawOrbit();e.stopPropagation();},{passive:true});
+window.addEventListener('mousemove',e=>{if(odrag){const a=oXY(e);trackRotation(a);oAng=a;drawOrbit();}});
+window.addEventListener('touchmove',e=>{if(odrag){const a=oXY(e);trackRotation(a);oAng=a;drawOrbit();}},{passive:true});
+window.addEventListener('mouseup',()=>odrag=false);
+window.addEventListener('touchend',()=>odrag=false);
+
+/* ── CATEGORY ── */
+const CATS=['食','衣','住','行','育','樂','人','另'];
+let ci2=0;
+function catMv(d){
+  const ch=document.getElementById('cwch');
+  ch.style.opacity='0';
+  setTimeout(()=>{ci2=(ci2+d+CATS.length)%CATS.length;ch.textContent=CATS[ci2];ch.style.opacity='1';},120);
+}
+let cwsy=null;
+document.getElementById('cwr').addEventListener('touchstart',e=>{cwsy=e.touches[0].clientY;e.stopPropagation();},{passive:true});
+document.getElementById('cwr').addEventListener('touchend',e=>{if(cwsy!==null){const dy=cwsy-e.changedTouches[0].clientY;if(Math.abs(dy)>15)catMv(dy>0?1:-1);cwsy=null;}},{passive:true});
+
+/* ── RATES ── */
+let curCur='TWD',rates={TWD:1,USD:0,JPY:0,HKD:0,CNY:0};
+(async()=>{
+  const d2=new Date().toISOString().slice(0,10);
+  const c=JSON.parse(localStorage.getItem('zh_rates')||'null');
+  if(c&&c.date===d2){rates=c.rates;rstMsg('匯率已更新');return;}
+  rstMsg('抓取匯率…');
+  try{const r=await fetch('https://open.er-api.com/v6/latest/TWD',{signal:AbortSignal.timeout(5000)});if(r.ok){const j=await r.json();rates={TWD:1,USD:j.rates.USD,JPY:j.rates.JPY,HKD:j.rates.HKD,CNY:j.rates.CNY};localStorage.setItem('zh_rates',JSON.stringify({date:d2,rates}));rstMsg('匯率已更新');}}catch(e){rstMsg('匯率離線');}
+})();
+function rstMsg(m){const el=document.getElementById('rst');el.textContent=m;clearTimeout(el._t);el._t=setTimeout(()=>el.textContent='',3000);}
+function setCur(c){curCur=c;document.querySelectorAll('.crb').forEach(b=>b.classList.toggle('on',b.textContent===c));updConv();}
+function updConv(){
+  const raw=parseFloat(document.getElementById('pval').textContent.replace(/[^0-9.]/g,''))||0;
+  const el=document.getElementById('cvln');
+  if(raw===0||curCur==='TWD'||!rates[curCur]){el.textContent='';return;}
+  el.textContent='≈ NT$\u202f'+Math.round(raw/rates[curCur]).toLocaleString('zh-TW');
+}
+
+/* ── CALCULATOR ── */
+let calcOpen=false,cNum='',cOp='',cPrev='',cSgn=1;
+let pendingAmt=null,pendingCur='TWD';
+
+function openCalc(){calcOpen=true;document.getElementById('calc').classList.add('open');}
+function closeCalc(){calcOpen=false;document.getElementById('calc').classList.remove('open');}
+function setSgn(s){cSgn=s;document.getElementById('spos').classList.toggle('on',s===1);document.getElementById('sneg').classList.toggle('on',s===-1);}
+function updCex(){const om={'+':'+','-':'−','*':'×','/':'÷'};const opd=cOp?' '+(om[cOp]||cOp)+' ':'';document.getElementById('cex').textContent=(cSgn<0?'−':'')+(cPrev||'')+(cPrev&&cOp?opd:'')+(cNum||(!cPrev?'0':''));}
+function ci(k){
+  if(k==='C'){cNum='';cOp='';cPrev='';}
+  else if(k==='pm'){cSgn=-cSgn;setSgn(cSgn);}
+  else if(k==='pct'){cNum=String(parseFloat(cNum||'0')/100);}
+  else if(['+','-','*','/'].includes(k)){if(cOp&&cNum){try{cPrev=String(eval(cPrev+cOp+cNum));}catch(e){}}else if(cNum){cPrev=cNum;}cOp=k;cNum='';}
+  else if(k==='.'){if(!cNum.includes('.'))cNum=(cNum||'0')+'.';}
+  else{cNum=cNum===''||cNum==='0'?k:cNum+k;}
+  updCex();
+}
+function cc(){
+  let res=parseFloat(cNum||'0');
+  if(cOp&&cPrev){try{res=eval(cPrev+cOp+(cNum||'0'));}catch(e){}}
+  const amtOrig=Math.abs(res)*cSgn;
+  const amtTWD=(curCur==='TWD'||!rates[curCur])?amtOrig:Math.round(amtOrig/rates[curCur]*100)/100;
+  pendingAmt=amtTWD; pendingCur=curCur;
+  document.getElementById('pval').textContent=(amtTWD<0?'−':'')+Math.abs(amtTWD).toLocaleString('zh-TW');
+  cNum='';cOp='';cPrev='';cSgn=1;setSgn(1);updCex();closeCalc();updConv();
+}
+function saveEntry(){
+  if(pendingAmt===null){openCalc();return;}
+  const d=a2d(oAng);
+  applyTransaction({
+    accName:document.getElementById('p4accname').textContent||'帳戶',
+    cat:CATS[ci2],
+    date:`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`,
+    amt:pendingAmt,amtOrig:pendingAmt,cur:pendingCur,
+    note:document.getElementById('p4note').value.trim(),
+  });
+  pendingAmt=null;
+  document.getElementById('pval').textContent='0';
+  document.getElementById('cvln').textContent='';
+  document.getElementById('p4note').value='';
+  const btn=document.querySelector('.p4save');
+  btn.textContent='✓';setTimeout(()=>btn.textContent='SAVE',1500);
+}
+
+/* ── KEYBOARD SUPPORT FOR CALCULATOR ── */
+document.addEventListener('keydown',e=>{
+  if(!calcOpen)return;
+  const k=e.key;
+  if(k>='0'&&k<='9'){ci(k);}
+  else if(k==='.'){ci('.');}
+  else if(k==='+'||k==='-'||k==='*'||k==='/'){ci(k);}
+  else if(k==='Enter'||k==='='){cc();}
+  else if(k==='Backspace'){
+    if(cNum.length>0){cNum=cNum.slice(0,-1);if(cNum==='')cNum='';}
+    updCex();
+  }
+  else if(k==='Escape'){closeCalc();}
+});
+
+/* ── HIDDEN RESET (long press logo) ── */
+let resetTimer=null;
+const logoEl=document.querySelector('.logo');
+function startReset(e){
+  resetTimer=setTimeout(()=>{
+    if(confirm('清除本機所有帳合資料？\n（帳戶、記錄、匯率快取）')){
+      ['zh_accounts','zh_hist','zh_rates'].forEach(k=>localStorage.removeItem(k));
+      location.reload();
+    }
+  },1500);
+}
+function cancelReset(){clearTimeout(resetTimer);resetTimer=null;}
+logoEl.addEventListener('mousedown',startReset);
+logoEl.addEventListener('touchstart',startReset,{passive:true});
+logoEl.addEventListener('mouseup',cancelReset);
+logoEl.addEventListener('mouseleave',cancelReset);
+logoEl.addEventListener('touchend',cancelReset);
+logoEl.addEventListener('touchcancel',cancelReset);
+logoEl.style.cursor='default';
+logoEl.style.userSelect='none';
+
+/* ── GOOGLE OAUTH + DRIVE SYNC ── */
+const CLIENT_ID='579018444518-lnjqspcr6v9e9vsdmi7n63qck4rqm7oe.apps.googleusercontent.com';
+const SCOPE='https://www.googleapis.com/auth/drive.appdata';
+const FNAME='zhanghe_data.json';
+let gToken=null,driveFileId=null,tokenClient=null;
+let syncMode='local';
+
+function gisReady(){
+  tokenClient=google.accounts.oauth2.initTokenClient({
+    client_id:CLIENT_ID,scope:SCOPE,callback:handleToken,
+  });
+}
+
+function handleToken(resp){
+  if(resp.error){setSyncDot('err');console.error(resp);return;}
+  gToken=resp.access_token;
+  syncMode='drive';
+  initDriveData();
+}
+
+async function gfetch(url,opts={}){
+  return fetch(url,{...opts,headers:{Authorization:`Bearer ${gToken}`,...(opts.headers||{})}});
+}
+
+async function initDriveData(){
+  setSyncDot('syncing');
+  try{
+    const r=await gfetch(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D'${FNAME}'%20and%20trashed%3Dfalse&fields=files(id)`);
+    const j=await r.json();
+    if(j.files&&j.files.length>0){
+      driveFileId=j.files[0].id;
+      const dr=await gfetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`);
+      const data=await dr.json();
+      if(data.accounts&&data.accounts.length)accounts=data.accounts;
+      if(data.txHist)txHist=data.txHist;
+      localStorage.setItem('zh_accounts',JSON.stringify(accounts));
+      localStorage.setItem('zh_hist',JSON.stringify(txHist));
+    }else{
+      await createDriveFile();
+    }
+    setSyncDot('drive');
+    goto(2);
+  }catch(e){
+    setSyncDot('err');
+    console.error('Drive init failed',e);
+    goto(2);
+  }
+}
+
+async function createDriveFile(){
+  const form=new FormData();
+  form.append('metadata',new Blob([JSON.stringify({name:FNAME,parents:['appDataFolder']})],{type:'application/json'}));
+  form.append('media',new Blob([JSON.stringify({accounts,txHist})],{type:'application/json'}));
+  const r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{
+    method:'POST',headers:{Authorization:`Bearer ${gToken}`},body:form,
+  });
+  const j=await r.json();
+  driveFileId=j.id;
+}
+
+let driveTimer=null;
+async function saveToDrive(){
+  if(!gToken||!driveFileId)return;
+  clearTimeout(driveTimer);
+  setSyncDot('syncing');
+  driveTimer=setTimeout(async()=>{
+    try{
+      await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`,{
+        method:'PATCH',
+        headers:{Authorization:`Bearer ${gToken}`,'Content-Type':'application/json'},
+        body:JSON.stringify({accounts,txHist}),
+      });
+      setSyncDot('drive');
+    }catch(e){setSyncDot('err');}
+  },1200);
+}
+
+function setSyncDot(state){
+  const el=document.getElementById('syncdot');if(!el)return;
+  el.className='syncdot'+(state==='drive'?' drive':state==='syncing'?' syncing':state==='err'?' err':'');
+  el.title={drive:'已同步 Google Drive',syncing:'同步中…',err:'同步失敗（本機備份保留）',local:'本機儲存'}[state]||'';
+}
+
+// Override saveData to also push to Drive
+const _saveData=saveData;
+saveData=function(){
+  localStorage.setItem('zh_accounts',JSON.stringify(accounts));
+  localStorage.setItem('zh_hist',JSON.stringify(txHist));
+  if(syncMode==='drive')saveToDrive();
+};
+
+// Override gbtn
+document.getElementById('gbtn').onclick=()=>{
+  if(tokenClient){tokenClient.requestAccessToken();}
+  else{goto(2);}// GIS not loaded, fallback local
+};
+</script>
+</body>
+</html>
